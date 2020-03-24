@@ -30,7 +30,7 @@ socket.on('message', (msg, rinfo) => {
 function sendUdpAnnounceReq(socket, msg, rawUrl, callback=()=>{}) {
 	const url = urlParse(rawUrl);
 	console.log('Sent message to url ' + url.href + ': ' + msg);
-	socket.send(msg, 0, msg.length, url.port, url.host, callback);
+	socket.send(msg, 0, msg.length, url.port, url.hostname, callback);
 }
 
 function createAnnounceReq() {
