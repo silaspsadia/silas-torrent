@@ -11,7 +11,7 @@ const MessageType = {
 	ANNOUNCE: 1
 };
 
-module.exports.getPeers = (torrent) => {
+module.exports.getPeers = (torrent, callback) => {
 	var trackerUrl = torrent.announce.toString('utf8');
 	var socket = dgram.createSocket('udp4');
 	var connectReq = msgBuilder.buildConnectReq();
@@ -32,7 +32,7 @@ module.exports.getPeers = (torrent) => {
 		} else if (respType(msg) == MessageType.ANNOUNCE) {
 			printRes(parseAnnounceRes(msg), rinfo);
 			const announceRes = parseAnnounceRes(msg);
-			return announceRes.peers
+			callback(announceRes.peers);
 		}	
 	});
 }

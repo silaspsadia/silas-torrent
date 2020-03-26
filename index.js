@@ -8,6 +8,12 @@ const util = require('./src/util');
 const tracker = require('./src/tracker');
 const torrentParser = require('./src/torrent-parser');
 const msgBuilder = require('./src/msg-builder');
+const download = require('./src/download');
 
 var torrent = torrentParser.parse(bencode.decode(fs.readFileSync(process.argv[2])));
-var peers = tracker.getPeers(torrent);
+tracker.getPeers(torrent, peers => {
+    peers.map(peer => {
+        console.log(peer);
+        download(peer, torrent);
+    })
+});
