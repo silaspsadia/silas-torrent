@@ -14,7 +14,7 @@ module.exports = (peer, torrent) => {
     });
 
     listenForMessages(socket, (msg) => {
-        msgHandler(msg);
+        msgHandler(msg, socket);
     })
 }
 

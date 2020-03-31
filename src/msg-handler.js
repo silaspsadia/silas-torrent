@@ -4,6 +4,7 @@ const util = require('./util');
 const msgBuilder = require('./msg-builder');
 
 const MessageType = {
+    "null": "KEEPALIVE",
     "0" : "CHOKE",
     "1" : "UNCHOKE",
     "4" : "HAVE",
@@ -14,9 +15,9 @@ const MessageType = {
     "9" : "PORT"
 };
 
-module.exports = (msg) => {
+module.exports = (msg, socket) => {
     if (isHandshake(msg)) {
-        socket.send(msgBuilder.buildInterested());
+        socket.write(msgBuilder.buildInterested());
     } else {
         msg = parse(msg);
         console.log('Got message: ', MessageType[msg.id] || msg.id);
@@ -25,30 +26,44 @@ module.exports = (msg) => {
                 chokeHandler();
                 break;
             case 1:
-                unchokeHandler();
+                unchokeHandler(socket);
                 break;
             case 4:
-                haveHandler(msg.payload);
+                haveHandler(msg.payload, socket);
                 break;
             case 5:
-                bitfieldHandler(msg.payload);
+                bitfieldHandler(msg.payload, socket);
                 break;
             case 7:
-                pieceHandler(msg.payload);
+                pieceHandler(msg.payload, socket);
                 break;
         }
+        socket.write(msgBuilder.buildInterested());
     }
 }
 
 function chokeHandler() {}
 
-function unchokeHandler() {}
+function unchokeHandler(socket) {
+    socket.write(msgBuilder.buildInterested());
+}
 
-function haveHandler(payload) {}
+function haveHandler(payload, socket) {
+    const pieceIndex = payload.readUInt32BE(0)
+    console.log('Have piece index: ', pieceIndex);
+    socket.write(msgBuilder.buildRequest({
+        index: pieceIndex,
+        begin: 0,
+        length: 420
+    }));
+}
 
-function bitfieldHandler(payload) {}
+function bitfieldHandler(payload, socket) {}
 
-function pieceHandler(payload) {}
+function pieceHandler(payload, socket) {
+    socket.write(msgBuilder.buildInterested());
+    console.log(JSON.stringify(payload));
+}
 
 function parse(msg) {
     const id = msg.length > 4 ? msg.readInt8(4) : null;
