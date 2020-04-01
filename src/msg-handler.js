@@ -23,7 +23,7 @@ module.exports = (msg, socket) => {
         console.log('Got message: ', MessageType[msg.id] || msg.id);
         switch(msg.id) {
             case 0:
-                chokeHandler();
+                chokeHandler(socket);
                 break;
             case 1:
                 unchokeHandler(socket);
@@ -42,7 +42,9 @@ module.exports = (msg, socket) => {
     }
 }
 
-function chokeHandler() {}
+function chokeHandler(socket) {
+    socket.end();
+}
 
 function unchokeHandler(socket) {
     socket.write(msgBuilder.buildInterested());
