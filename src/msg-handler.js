@@ -54,6 +54,7 @@ function chokeHandler(socket) {
 }
 
 function unchokeHandler(socket, torrent) {
+    socket.write(msgBuilder.buildInterested());
     requestPiece(socket, torrent);
 }
 
@@ -77,8 +78,8 @@ function pieceHandler(payload, socket, torrent) {
     console.log('Current reqQueue length: ',
         torrent.reqQueue.length);
     console.log('Got piece at index ', pieceIndex, 
-        ', block index ', piece.curBlockIndex / torrent.BLOCK_LEN, 
-        '/', torrent.pieceNumBlocks(pieceIndex),
+        ', bytes ', piece.curBlockIndex, 
+        '/', torrent.pieceLen(pieceIndex),
         ': ', payload.block);
     requestPiece(socket, torrent);
 }
