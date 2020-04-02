@@ -4,6 +4,7 @@ const bignum = require('bignum');
 
 module.exports = class {
     constructor(decodedTorrent) {
+        this.BLOCK_LEN = Math.pow(2, 14);
         this.announce = decodedTorrent.announce;
         this.announceList = decodedTorrent['announce-list'];
         this.info = decodedTorrent.info;
@@ -15,6 +16,18 @@ module.exports = class {
             done: false,
             curBlockIndex: 0
         });
+        this.reqQueue = [];
+    }
+
+    pieceLen(pieceIndex) {
+        const totalLength = bignum.fromBuffer(this.size).toNumber();
+        const pieceLen = this.info['piece length'];
+        return pieceIndex == this.nPieces ? totalLength % pieceLen : pieceLen; 
+    }
+
+    pieceNumBlocks(pieceIndex) {
+        const pieceLen = this.pieceLen(pieceIndex);
+        return Math.ceil(pieceLen / this.BLOCK_LEN);
     }
 
     printPieces() {

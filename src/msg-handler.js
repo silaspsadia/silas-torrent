@@ -3,7 +3,6 @@ const Buffer = require('buffer').Buffer;
 const util = require('./util');
 const msgBuilder = require('./msg-builder');
 
-const BLOCK_LEN = Math.pow(2, 14);
 
 const MessageType = {
     "null": "KEEPALIVE",
@@ -24,11 +23,13 @@ module.exports = (msg, socket, torrent) => {
         msg = parse(msg);
         console.log('Got message: ', MessageType[msg.id] || msg.id);
         switch(msg.id) {
+            case null:
+                keepAliveHandler(socket, torrent);
             case 0:
                 chokeHandler(socket);
                 break;
             case 1:
-                unchokeHandler(socket);
+                unchokeHandler(socket, torrent);
                 break;
             case 4:
                 haveHandler(msg.payload, socket, torrent);
@@ -44,26 +45,24 @@ module.exports = (msg, socket, torrent) => {
     }
 }
 
+function keepAliveHandler(socket, torrent) {
+    requestPiece(socket, torrent);
+}
+
 function chokeHandler(socket) {
     socket.end();
 }
 
-function unchokeHandler(socket) {
-    socket.write(msgBuilder.buildInterested());
+function unchokeHandler(socket, torrent) {
+    requestPiece(socket, torrent);
 }
 
 function haveHandler(payload, socket, torrent) {
     const pieceIndex = payload.readUInt32BE(0);
-    const piece = torrent.pieces[pieceIndex];
+    torrent.reqQueue.push(pieceIndex);
     console.log(pieceIndex);
-    if (!piece.touched) {
-        piece.touched = true;
-        console.log(piece.curBlockIndex);
-        socket.write(msgBuilder.buildRequest({
-            index: pieceIndex,
-            begin: piece.curBlockIndex,
-            length: BLOCK_LEN
-        }));
+    if (torrent.reqQueue.length === 0) {
+        requestPiece(socket, torrent);
     }
 }
 
@@ -74,13 +73,14 @@ function pieceHandler(payload, socket, torrent) {
     const piece = torrent.pieces[pieceIndex];
     // do something with block
     piece.touched = true;
-    piece.curBlockIndex = payload.block.length;
-    console.log(payload.block);
-    socket.write(msgBuilder.buildRequest({
-        index: pieceIndex,
-        begin: piece.curBlockIndex,
-        length: BLOCK_LEN
-    }));
+    piece.curBlockIndex = piece.curBlockIndex + payload.block.length;
+    console.log('Current reqQueue length: ',
+        torrent.reqQueue.length);
+    console.log('Got piece at index ', pieceIndex, 
+        ', block index ', piece.curBlockIndex / torrent.BLOCK_LEN, 
+        '/', torrent.pieceNumBlocks(pieceIndex),
+        ': ', payload.block);
+    requestPiece(socket, torrent);
 }
 
 function parse(msg) {
@@ -104,4 +104,16 @@ function parse(msg) {
 function isHandshake(msg) {
     return msg.length === msg.readUInt8(0) + 49 &&
         msg.toString('utf8', 1) === 'BitTorrent protocol';
+}
+
+function requestPiece(socket, torrent) {
+    console.log('\n\nSENT REQUEST\n\n');
+    while (torrent.reqQueue.length > 0) {
+        const index = torrent.reqQueue.shift();
+        socket.write(msgBuilder.buildRequest({
+            index: index,
+            begin: torrent.pieces[index].curBlockIndex,
+            length: torrent.BLOCK_LEN
+        }));
+    }
 }
