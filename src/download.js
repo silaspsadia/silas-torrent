@@ -13,12 +13,12 @@ module.exports = (peer, torrent) => {
         socket.write(msgBuilder.buildHandshake(torrent));
     });
 
-    listenForMessages(socket, (msg) => {
-        msgHandler(msg, socket);
+    onWholeMessage(socket, (msg) => {
+        msgHandler(msg, socket, torrent);
     })
 }
 
-function listenForMessages(socket, callback) {
+function onWholeMessage(socket, callback) {
     let savedBuf = Buffer.alloc(0);
     let handshake = true;
 

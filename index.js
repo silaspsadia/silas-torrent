@@ -6,11 +6,11 @@ const crypto = require('crypto');
 const Buffer = require('buffer').Buffer;
 const util = require('./src/util');
 const tracker = require('./src/tracker');
-const torrentParser = require('./src/torrent-parser');
 const msgBuilder = require('./src/msg-builder');
 const download = require('./src/download');
+const Torrent = require('./src/Torrent');
 
-var torrent = torrentParser.parse(bencode.decode(fs.readFileSync(process.argv[2])));
+var torrent = new Torrent(bencode.decode(fs.readFileSync(process.argv[2])));
 tracker.getPeers(torrent, peers => {
     peers.map(peer => {
         console.log(peer);

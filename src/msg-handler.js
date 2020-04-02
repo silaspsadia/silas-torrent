@@ -3,6 +3,8 @@ const Buffer = require('buffer').Buffer;
 const util = require('./util');
 const msgBuilder = require('./msg-builder');
 
+const BLOCK_LEN = Math.pow(2, 14);
+
 const MessageType = {
     "null": "KEEPALIVE",
     "0" : "CHOKE",
@@ -15,7 +17,7 @@ const MessageType = {
     "9" : "PORT"
 };
 
-module.exports = (msg, socket) => {
+module.exports = (msg, socket, torrent) => {
     if (isHandshake(msg)) {
         socket.write(msgBuilder.buildInterested());
     } else {
@@ -29,13 +31,13 @@ module.exports = (msg, socket) => {
                 unchokeHandler(socket);
                 break;
             case 4:
-                haveHandler(msg.payload, socket);
+                haveHandler(msg.payload, socket, torrent);
                 break;
             case 5:
-                bitfieldHandler(msg.payload, socket);
+                bitfieldHandler(msg.payload, socket, torrent);
                 break;
             case 7:
-                pieceHandler(msg.payload, socket);
+                pieceHandler(msg.payload, socket, torrent);
                 break;
         }
         socket.write(msgBuilder.buildInterested());
@@ -50,21 +52,35 @@ function unchokeHandler(socket) {
     socket.write(msgBuilder.buildInterested());
 }
 
-function haveHandler(payload, socket) {
-    const pieceIndex = payload.readUInt32BE(0)
-    console.log('Have piece index: ', pieceIndex);
-    socket.write(msgBuilder.buildRequest({
-        index: pieceIndex,
-        begin: 0,
-        length: 420
-    }));
+function haveHandler(payload, socket, torrent) {
+    const pieceIndex = payload.readUInt32BE(0);
+    const piece = torrent.pieces[pieceIndex];
+    console.log(pieceIndex);
+    if (!piece.touched) {
+        piece.touched = true;
+        console.log(piece.curBlockIndex);
+        socket.write(msgBuilder.buildRequest({
+            index: pieceIndex,
+            begin: piece.curBlockIndex,
+            length: BLOCK_LEN
+        }));
+    }
 }
 
-function bitfieldHandler(payload, socket) {}
+function bitfieldHandler(payload, socket, torrent) {}
 
-function pieceHandler(payload, socket) {
-    socket.write(msgBuilder.buildInterested());
-    console.log(JSON.stringify(payload));
+function pieceHandler(payload, socket, torrent) {
+    const pieceIndex = payload.index;
+    const piece = torrent.pieces[pieceIndex];
+    // do something with block
+    piece.touched = true;
+    piece.curBlockIndex = payload.block.length;
+    console.log(payload.block);
+    socket.write(msgBuilder.buildRequest({
+        index: pieceIndex,
+        begin: piece.curBlockIndex,
+        length: BLOCK_LEN
+    }));
 }
 
 function parse(msg) {
